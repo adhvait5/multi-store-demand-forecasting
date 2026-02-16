@@ -2,6 +2,7 @@
 data/raw/*.csv
 data/processed/*.pkl
 data/processed/*.parquet
+data/
 
 # Python
 __pycache__/
