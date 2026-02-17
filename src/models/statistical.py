@@ -15,15 +15,34 @@ def fit_sarima(
     series: pd.Series,
     order: tuple[int, int, int],
     seasonal_order: tuple[int, int, int, int] = (0, 0, 0, 0),
+    *,
+    enforce_stationarity: bool = True,
+    enforce_invertibility: bool = True,
 ) -> tuple:
-    """Fit SARIMA model. Returns (model, fitted_result)."""
-    model = SARIMAX(
-        series.dropna(),
-        order=order,
-        seasonal_order=seasonal_order if seasonal_order != (0, 0, 0, 0) else (0, 0, 0, 0),
-    )
-    result = model.fit(disp=False)
-    return model, result
+    """Fit SARIMA model. Returns (model, fitted_result).
+    If default fit fails, retries with enforce_stationarity=False, enforce_invertibility=False.
+    """
+    so = seasonal_order if seasonal_order != (0, 0, 0, 0) else (0, 0, 0, 0)
+    try:
+        model = SARIMAX(
+            series.dropna(),
+            order=order,
+            seasonal_order=so,
+            enforce_stationarity=enforce_stationarity,
+            enforce_invertibility=enforce_invertibility,
+        )
+        result = model.fit(disp=False)
+        return model, result
+    except Exception:
+        model = SARIMAX(
+            series.dropna(),
+            order=order,
+            seasonal_order=so,
+            enforce_stationarity=False,
+            enforce_invertibility=False,
+        )
+        result = model.fit(disp=False)
+        return model, result
 
 
 def fit_sarimax(
@@ -43,6 +62,27 @@ def fit_sarimax(
     return model, result
 
 
+def _fit_sarima_with_fallback(
+    series: pd.Series,
+    order: tuple[int, int, int],
+    seasonal_order: tuple[int, int, int, int],
+    metric: str = "aic",
+) -> tuple[Optional[object], Optional[float]]:
+    """Try fit with default, then relaxed stationarity/invertibility. Returns (result, score) or (None, None)."""
+    for enforce_stationarity, enforce_invertibility in [(True, True), (False, False)]:
+        try:
+            _, res = fit_sarima(
+                series, order, seasonal_order,
+                enforce_stationarity=enforce_stationarity,
+                enforce_invertibility=enforce_invertibility,
+            )
+            score = getattr(res, metric.lower())
+            return res, score
+        except Exception:
+            continue
+    return None, None
+
+
 def grid_search_sarima(
     series: pd.Series,
     p_range: tuple = (0, 2),
@@ -56,6 +96,7 @@ def grid_search_sarima(
 ) -> dict:
     """
     Grid search over SARIMA orders. Returns best params and metric.
+    If all combinations fail, tries fallback orders with relaxed constraints.
     """
     best_score = np.inf
     best_params = None
@@ -65,15 +106,29 @@ def grid_search_sarima(
         for P, D, Q in product(range(P_range[0], P_range[1] + 1), range(D_range[0], D_range[1] + 1), range(Q_range[0], Q_range[1] + 1)):
             if p == 0 and q == 0 and P == 0 and Q == 0:
                 continue
-            try:
-                _, res = fit_sarima(series, (p, d, q), (P, D, Q, s))
-                score = getattr(res, metric.upper())
+            res, score = _fit_sarima_with_fallback(series, (p, d, q), (P, D, Q, s), metric)
+            if res is not None:
                 results.append({"order": (p, d, q), "seasonal_order": (P, D, Q, s), metric: score})
                 if score < best_score:
                     best_score = score
                     best_params = {"order": (p, d, q), "seasonal_order": (P, D, Q, s)}
-            except Exception:
-                continue
+
+    # Fallback: try common robust orders with relaxed constraints when grid fails
+    if best_params is None:
+        fallbacks = [
+            ((1, 0, 1), (0, 1, 1, s)),  # SARIMA(1,0,1)(0,1,1,7) - common for daily data
+            ((0, 1, 1), (0, 1, 1, s)),  # SARIMA(0,1,1)(0,1,1,7)
+            ((1, 1, 0), (0, 1, 1, s)),  # SARIMA(1,1,0)(0,1,1,7)
+            ((0, 1, 1), (0, 0, 0, s)),  # ARIMA(0,1,1) - no seasonal
+            ((1, 0, 0), (0, 1, 0, s)),  # SARIMA(1,0,0)(0,1,0,7)
+        ]
+        for order, seasonal_order in fallbacks:
+            res, score = _fit_sarima_with_fallback(series, order, seasonal_order, metric)
+            if res is not None:
+                best_score = score
+                best_params = {"order": order, "seasonal_order": seasonal_order}
+                results.append({"order": order, "seasonal_order": seasonal_order, metric: score})
+                break
 
     return {"best_params": best_params, "best_score": best_score, "all_results": results}
 
