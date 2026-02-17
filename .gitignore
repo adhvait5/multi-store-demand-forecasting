@@ -2,6 +2,7 @@
 data/raw/*.csv
 data/processed/*.pkl
 data/processed/*.parquet
+data/store-sales-time-series-forecasting/
 data/
 
 # Python
