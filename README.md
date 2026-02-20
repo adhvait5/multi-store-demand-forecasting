@@ -2,7 +2,7 @@
 
 Forecast daily product sales across multiple store locations to reduce stockouts, minimize overstock, and support inventory allocation decisions.
 
-**Dataset:** [Kaggle Store Sales - Time Series Forecasting](https://www.kaggle.com/competitions/store-sales-time-series-forecasting) (Corporación Favorita, Ecuador)
+**Dataset:** [Kaggle Store Sales - Time Series Forecasting]
 
 ## Business Goal
 
@@ -10,42 +10,6 @@ Forecast daily product sales across multiple store locations to reduce stockouts
 - Minimize overstock
 - Improve revenue planning
 - Support inventory allocation and reorder point decisions
-
-## Project Structure
-
-```
-multi-store-demand-forecasting/
-??? data/
-?   ??? raw/           # Downloaded CSVs (run download script)
-?   ??? processed/
-??? notebooks/
-?   ??? 01_exploratory_analysis.ipynb
-?   ??? 02_baseline_models.ipynb
-?   ??? 03_statistical_models.ipynb
-?   ??? 04_ml_models.ipynb
-?   ??? 05_business_layer.ipynb
-??? src/
-?   ??? data_loader.py
-?   ??? eda_utils.py
-?   ??? feature_engineering.py
-?   ??? metrics.py
-?   ??? models/
-?   ?   ??? baselines.py
-?   ?   ??? statistical.py
-?   ?   ??? ml_models.py
-?   ??? business/
-?       ??? inventory.py
-??? scripts/
-?   ??? download_data.py
-??? requirements.txt
-```
-
-## Setup
-
-1. Install dependencies: `pip install -r requirements.txt`
-2. Kaggle API: Place `kaggle.json` in `~/.kaggle/` and accept competition rules
-3. Download data: `python scripts/download_data.py`
-4. Run notebooks in order (01 ? 05) from the `notebooks/` directory
 
 ## Modeling Steps
 
@@ -57,9 +21,9 @@ multi-store-demand-forecasting/
 
 ## Evaluation Metrics
 
-- **MAE** ? Mean Absolute Error
-- **RMSE** ? Root Mean Squared Error  
-- **MAPE** ? Mean Absolute Percentage Error (preferred for business; expresses error as % of demand)
+- **MAE** : Mean Absolute Error
+- **RMSE** : Root Mean Squared Error  
+- **MAPE** : Mean Absolute Percentage Error (preferred for business; expresses error as % of demand)
 
 ## Results & Tradeoffs
 
